@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% set active = 'market' %}
+{% block main %}
+<style>
+.viz-root {
+  --surface-1: #fcfcfb; --ink-1: #0b0b0b; --ink-2: #52514e; --grid: #e7e6e2;
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+}
+@media (prefers-color-scheme: dark) {
+  .viz-root { --surface-1: #1a1a19; --ink-1: #ffffff; --ink-2: #c3c2b7; --grid: #2f2f2c;
+              --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; }
+}
+.viz-root .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.viz-root .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.viz-root .tile b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+.viz-root .tile span { color: var(--muted); font-size: 12px; }
+.viz-root .tile span { display: block; }
+.viz-root .tile em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.viz-root .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.viz-root .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.viz-root .card h3 { margin: 0 0 2px; font-size: 14px; }
+.viz-root .card .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.viz-root .chart { position: relative; height: 260px; }
+.viz-root .chart.tall { height: 380px; }
+.viz-root .chips a { display: inline-block; padding: 3px 10px; border: 1px solid var(--line); border-radius: 12px; margin-right: 6px; color: var(--muted); }
+.viz-root .chips a.on { color: var(--text); border-color: var(--accent); font-weight: 600; }
+.viz-root details { margin-top: 8px; font-size: 12px; }
+.viz-root table.data { font-size: 12px; border: none; }
+.viz-root table.data td, .viz-root table.data th { padding: 3px 8px; }
+@media (max-width: 900px) { .viz-root .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .viz-root .grid2 { grid-template-columns: 1fr; } }
+</style>
+
+<div class="viz-root">
+  <div class="chips" style="margin-bottom:12px">
+    Период:
+    {% for d in (7, 14, 30, 90) %}<a href="/market?days={{ d }}" class="{{ 'on' if d == days }}">{{ d }} дн.</a>{% endfor %}
+    <span class="muted" style="margin-left:8px">Технические = Разработка, DevOps, Интеграции, Техспец, Аналитика</span>
+  </div>
+
+  {% set t = m.tiles %}
+  <div class="tiles">
+    <div class="tile"><b>{{ t.today_tech }}</b><span>технических сегодня</span>
+      <em>в среднем {{ t.avg7_tech }} в день за неделю</em></div>
+    <div class="tile"><b>{{ t.today_rel }}</b><span>подходящих тебе сегодня (≥70)</span>
+      <em>из {{ t.today_all }} всех вакансий</em></div>
+    <div class="tile"><b>~{{ t.tomorrow_tech }}</b><span>технических завтра ({{ t.tomorrow_wd }})</span>
+      <em>среднее по этому дню недели</em></div>
+    <div class="tile"><b>{{ t.tech_share }}%</b><span>доля технических</span>
+      <em>{{ t.tech_total }} за {{ m.days }} дн. наблюдений</em></div>
+    <div class="tile"><b>{{ '$%s' % '{:,}'.format(t.salary_median).replace(',', ' ') if t.salary_median else '—' }}</b>
+      <span>медиана вилки в месяц</span><em>по {{ t.salary_n }} техническим с указанной ЗП</em></div>
+  </div>
+
+  <div class="card">
+    <h3>Вакансии по дням</h3>
+    <div class="sub">Сколько выходит каждый день: все, технические и подходящие тебе</div>
+    <div class="chart"><canvas id="daily"></canvas></div>
+    <details><summary>Таблицей</summary>
+      <table class="data"><tr><th>День</th><th>Все</th><th>Технические</th><th>Подходящие</th></tr>
+        {% for i in range(m.daily.labels | length) | reverse %}
+        <tr><td>{{ m.daily.labels[i] }} {{ m.daily.weekday[i] }}</td><td>{{ m.daily.all[i] }}</td><td>{{ m.daily.tech[i] }}</td><td>{{ m.daily.rel[i] }}</td></tr>
+        {% endfor %}
+      </table>
+    </details>
+  </div>
+
+  {% set R = m.resumes %}
+  <div class="card">
+    <h3>Другая сторона: резюме соискателей</h3>
+    <div class="sub">{{ R.n }} резюме за период · медиана ожиданий {{ '$%s' % R.median_usd if R.median_usd else '—' }}
+      (по {{ R.with_salary }} с суммой) против медианы вилок {{ '$%s' % t.salary_median if t.salary_median else '—' }} ·
+      Senior/Lead в бэкенде и лидах: {{ R.mine_n }}{% if R.mine_median %}, хотят ~${{ R.mine_median }}{% endif %} ·
+      <a href="/resumes">все резюме →</a></div>
+    <div class="sub">Стек: сколько вакансий его просят и сколько соискателей его указывают. Где синий столбец выше
+      оранжевого, кандидатов не хватает.</div>
+    <div class="chart tall"><canvas id="supply"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h3>По дням недели</h3><div class="sub">Среднее число технических вакансий: когда рынок активнее</div>
+      <div class="chart"><canvas id="weekday"></canvas></div></div>
+    <div class="card"><h3>Вилки технических вакансий</h3><div class="sub">В месяц, USD/EUR. Годовые суммы пересчитаны /12</div>
+      <div class="chart"><canvas id="salary"></canvas></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h3>Что просят: стек</h3><div class="sub">Топ-15 технологий в технических вакансиях</div>
+      <div class="chart tall"><canvas id="stack"></canvas></div></div>
+    <div class="card"><h3>Все вакансии по категориям</h3><div class="sub">Из чего состоит поток</div>
+      <div class="chart tall"><canvas id="categories"></canvas></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h3>Вертикали технических</h3><div class="sub">iGaming, crypto, fintech…</div>
+      <div class="chart"><canvas id="verticals"></canvas></div></div>
+    <div class="card"><h3>Источники технических вакансий</h3><div class="sub">Какие каналы реально приносят твои вакансии</div>
+      <div class="chart"><canvas id="sources"></canvas></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h3>Формат работы</h3><div class="sub">Технические вакансии</div>
+      <div class="chart"><canvas id="formats"></canvas></div></div>
+    <div class="card"><h3>Постоянная работа или проект</h3><div class="sub">Технические вакансии</div>
+      <div class="chart"><canvas id="jobtypes"></canvas></div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const M = {{ m | tojson }};
+const css = n => getComputedStyle(document.querySelector('.viz-root')).getPropertyValue(n).trim();
+const C = { s1: css('--series-1'), s2: css('--series-2'), s3: css('--series-3'), ink: css('--ink-2'), grid: css('--grid') };
+Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+Chart.defaults.font.size = 12;
+Chart.defaults.color = C.ink;
+const axes = (horizontal) => ({
+  x: { grid: { display: horizontal, color: C.grid }, border: { display: false }, ticks: { precision: 0 } },
+  y: { grid: { display: !horizontal, color: C.grid }, border: { display: false }, ticks: { precision: 0 } },
+});
+const tooltip = { backgroundColor: 'rgba(20,20,20,.9)', padding: 8, displayColors: true, boxPadding: 4 };
+
+// Линии по дням: 3 серии, легенда + таблица (бирюзовый ниже 3:1 на светлом фоне)
+new Chart(document.getElementById('daily'), {
+  type: 'line',
+  data: { labels: M.daily.labels.map((l, i) => l + ' ' + M.daily.weekday[i]), datasets: [
+    { label: 'Все вакансии', data: M.daily.all, borderColor: C.s1, backgroundColor: C.s1 },
+    { label: 'Технические', data: M.daily.tech, borderColor: C.s2, backgroundColor: C.s2 },
+    { label: 'Подходящие (≥70)', data: M.daily.rel, borderColor: C.s3, backgroundColor: C.s3 },
+  ]},
+  options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    elements: { line: { borderWidth: 2, tension: 0.25 }, point: { radius: 0, hoverRadius: 5, hitRadius: 12 } },
+    plugins: { legend: { position: 'top', align: 'start', labels: { boxWidth: 12, boxHeight: 2 } }, tooltip },
+    scales: axes(false) },
+});
+
+function bars(id, labels, values, label, horizontal = true) {
+  new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ label, data: values, backgroundColor: C.s1, borderRadius: 4,
+                                 borderSkipped: 'start', maxBarThickness: 18, categoryPercentage: 0.8 }] },
+    options: { maintainAspectRatio: false, indexAxis: horizontal ? 'y' : 'x',
+      plugins: { legend: { display: false }, tooltip }, scales: axes(horizontal) },
+  });
+}
+const unzip = arr => [arr.map(x => x[0]), arr.map(x => x[1])];
+bars('weekday', M.weekday.labels, M.weekday.values, 'В среднем технических', false);
+bars('salary', M.salary_buckets.labels, M.salary_buckets.values, 'Вакансий', false);
+bars('stack', ...unzip(M.stack), 'Упоминаний');
+bars('categories', ...unzip(M.categories), 'Вакансий');
+bars('verticals', ...unzip(M.verticals), 'Вакансий');
+bars('sources', ...unzip(M.sources), 'Технических вакансий');
+bars('formats', ...unzip(M.formats), 'Вакансий');
+bars('jobtypes', ...unzip(M.job_types), 'Вакансий');
+
+new Chart(document.getElementById('supply'), {
+  type: 'bar',
+  data: { labels: M.resumes.vs.labels, datasets: [
+    { label: 'Вакансий просят', data: M.resumes.vs.demand, backgroundColor: C.s1, borderRadius: 4, maxBarThickness: 14 },
+    { label: 'Резюме указывают', data: M.resumes.vs.supply, backgroundColor: C.s2, borderRadius: 4, maxBarThickness: 14 },
+  ]},
+  options: { maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { position: 'top', align: 'start', labels: { boxWidth: 12 } }, tooltip }, scales: axes(true) },
+});
+</script>
+{% endblock %}

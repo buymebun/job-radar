@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ APP_TITLE }}</title>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #2f6fed; --good: #15803d; --mid: #b45309; --low: #9ca3af; --chip: #eef2ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1218; --panel: #171b23; --text: #e6e8ee; --muted: #8b93a3; --line: #262c38;
+          --accent: #6b9bff; --good: #4ade80; --mid: #fbbf24; --low: #6b7280; --chip: #1f2636; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header { display: flex; align-items: center; gap: 20px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 16px; margin: 0; }
+header nav a { margin-right: 14px; color: var(--muted); }
+header nav a.active { color: var(--text); font-weight: 600; }
+#state { margin-left: auto; color: var(--muted); font-size: 12px; text-align: right; }
+main { padding: 16px 20px; }
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.stat b { display: block; font-size: 22px; }
+.stat span { color: var(--muted); font-size: 12px; }
+form.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+input, select, textarea, button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+button { cursor: pointer; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--panel); }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--chip); }
+.rel { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rel.hi { color: var(--good); } .rel.mid { color: var(--mid); } .rel.lo { color: var(--low); }
+.muted { color: var(--muted); font-size: 12px; }
+.chip { display: inline-block; background: var(--chip); border-radius: 10px; padding: 1px 7px; margin: 1px 2px 1px 0; font-size: 12px; }
+.contacts a { display: block; white-space: nowrap; }
+#panel { position: fixed; top: 0; right: 0; width: min(560px, 100vw); height: 100vh; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 18px 20px; box-shadow: -8px 0 24px rgba(0,0,0,.15); transform: translateX(100%); transition: transform .15s; z-index: 10; }
+#panel.open { transform: none; }
+#panel h2 { margin: 0 0 4px; font-size: 18px; }
+#panel .close { float: right; }
+#panel section { margin: 14px 0; }
+#panel pre { white-space: pre-wrap; font: 13px/1.45 inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 360px; overflow: auto; }
+textarea { width: 100%; min-height: 80px; }
+.saved { color: var(--good); font-size: 12px; margin-left: 8px; }
+.toggle.вкл { background: var(--good); color: #fff; border-color: var(--good); }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hide-sm { display: none; }
+  main { padding: 12px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📡 {{ APP_TITLE }}</h1>
+  <nav>
+    <a href="/" class="{{ 'active' if active == 'jobs' }}">Вакансии</a>
+    <a href="/market" class="{{ 'active' if active == 'market' }}">Рынок</a>
+    <a href="/resumes" class="{{ 'active' if active == 'resumes' }}">Резюме</a>
+    <a href="/sources" class="{{ 'active' if active == 'sources' }}">Источники</a>
+  </nav>
+  <div id="state" hx-get="/state" hx-trigger="load, every 10s"></div>
+</header>
+<main>{% block main %}{% endblock %}</main>
+</body>
+</html>

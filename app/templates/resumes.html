@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set active = 'resumes' %}
+{% block main %}
+<style>
+.rs-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.rs-tiles .t { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.rs-tiles b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.rs-tiles span { color: var(--muted); font-size: 12px; }
+.rs-list { display: grid; gap: 8px; }
+.rs { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.rs .top { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.rs .money { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rs .sum { margin: 4px 0; }
+@media (max-width: 700px) { .rs-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rs .money { margin-left: 0; } }
+</style>
+
+<div class="rs-tiles">
+  <div class="t"><b>{{ s.n }}</b><span>резюме по фильтру</span></div>
+  <div class="t"><b>{{ '$%s' % s.median if s.median else '—' }}</b><span>медиана ожиданий в месяц (по {{ s.with_salary }} с суммой)</span></div>
+  <div class="t"><b>{{ '$%s' % s.vac_median if s.vac_median else '—' }}</b><span>медиана вилок вакансий за тот же период</span></div>
+  <div class="t"><b>{{ s.pending }}</b><span>ещё разбирает локальная модель</span></div>
+</div>
+
+<form class="filters" method="get" action="/resumes">
+  <input name="q" value="{{ p.q or '' }}" placeholder="Поиск: python, kubernetes…" size="18">
+  <select name="role"><option value="">Все роли</option>
+    {% for r in ROLES %}<option {{ 'selected' if p.role == r }}>{{ r }}</option>{% endfor %}</select>
+  <select name="level"><option value="">Любой уровень</option>
+    {% for r in LEVELS %}<option {{ 'selected' if p.level == r }}>{{ r }}</option>{% endfor %}</select>
+  <label>ожидания от $<input name="min_usd" type="number" min="0" step="500" value="{{ p.min_usd or '' }}" style="width:80px"></label>
+  <label><input type="checkbox" name="with_salary" value="1" {{ 'checked' if p.with_salary }}> только с суммой</label>
+  <select name="period">{% for k, v in PERIODS.items() %}<option value="{{ k }}" {{ 'selected' if p.period == k }}>{{ v }}</option>{% endfor %}</select>
+  <button>Показать</button>
+  <span class="muted">Курсы для пересчёта в $: config.yaml → market</span>
+</form>
+
+<div class="rs-list">
+{% for r in rows %}
+  <div class="rs">
+    <div class="top">
+      <b>{{ r.title or r.role }}</b>
+      <span class="chip">{{ r.role }}</span>
+      {% if r.level != 'Не указан' %}<span class="chip">{{ r.level }}</span>{% endif %}
+      {% if r.years %}<span class="muted">{{ r.years | round(1) }} г. опыта</span>{% endif %}
+      {% if r.format != 'Не указан' %}<span class="muted">{{ r.format }}</span>{% endif %}
+      <span class="money">{% if r.salary %}{{ '{:,}'.format(r.salary).replace(',', ' ') }} {{ r.currency }}{% if r.currency not in ('USD', 'USDT') and r.salary_usd %} <span class="muted">≈ ${{ r.salary_usd | int }}</span>{% endif %}{% else %}<span class="muted">без суммы</span>{% endif %}</span>
+    </div>
+    {% if r.summary %}<div class="sum">{{ r.summary }}</div>{% endif %}
+    <div>{% for t in r.stack[:12] %}<span class="chip">{{ t }}</span>{% endfor %}</div>
+    <div class="muted" style="font-size:12px">{{ r.date }} · <a href="{{ r.url }}" target="_blank">{{ r.channel }}</a></div>
+  </div>
+{% else %}
+  <p class="muted">Нет резюме по фильтру</p>
+{% endfor %}
+</div>
+{% endblock %}

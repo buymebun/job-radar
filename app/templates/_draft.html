@@ -1,0 +1,7 @@
+<textarea id="draft-text-{{ vid }}" rows="8">{{ text }}</textarea>
+<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px">
+  <button onclick="navigator.clipboard.writeText(document.getElementById('draft-text-{{ vid }}').value); this.textContent='скопировано ✓'">📋 Скопировать</button>
+  <button hx-post="/v/{{ vid }}/draft" hx-target="#draft-{{ vid }}">🔄 Переписать</button>
+  {% for c in contacts %}<a href="{{ contact_href(c) }}" target="_blank">✉️ {{ c.value }}</a>{% endfor %}
+</div>
+<div class="muted" style="margin-top:4px">Проверь факты перед отправкой и не забудь поставить статус «Откликнулась».</div>

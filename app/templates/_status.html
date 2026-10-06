@@ -1,0 +1,3 @@
+<select name="status" hx-post="/v/{{ v.id }}/status" hx-swap="outerHTML" hx-trigger="change" onclick="event.stopPropagation()">
+  {% for s in STATUSES %}<option {{ 'selected' if s == v.status }}>{{ s }}</option>{% endfor %}
+</select>

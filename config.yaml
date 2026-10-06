@@ -1,0 +1,177 @@
+# ---------- Источники ----------
+sources:
+  # Папка Telegram на аккаунте-парсере: всё, что в ней лежит, — источники (проверка раз в folder_poll_min минут).
+  # Если задана — авто-включение по названию (auto_match) для обычных диалогов отключается: управляешь папкой.
+  folder: "Vacancies"
+  folder_poll_min: 2
+  # Диалоги аккаунта-парсера, у которых название совпадает с этим regex, включаются автоматически
+  auto_match: "ваканс|вакансі|jobs?|hr\\b|работ|робот|hiring|career|кадров|affiliate|арбитраж|cpa|integrator|remote"
+  # Явно включить (username без @ или точное название диалога)
+  include: []
+  # Явно выключить
+  exclude: []
+  # Публичные каналы — читаются по @username БЕЗ вступления (новому аккаунту это безопасно).
+  # Формат: "@username" или "https://t.me/username". Закрытые чаты сюда не подходят — только через вступление.
+  public: []
+  poll_min: 10             # как часто забирать новые посты из публичных каналов
+
+# ---------- Сбор ----------
+collect:
+  backfill_days: 14        # глубина первой выгрузки (30 выедает дневную квоту Gemini, старые вакансии обычно закрыты)
+  min_text_len: 80         # короче — не вакансия (для каналов)
+  chat_min_text_len: 20    # в чатах запросы короткие: «нужен техспец, кто может?»
+  per_channel_limit: 1500  # максимум сообщений на канал при бэкфилле
+
+# ---------- Префильтр (без LLM) ----------
+prefilter:
+  # Если true — посты только с «нетехническими» словами (минус) и без плюс-слов отбрасываются
+  exclude_non_tech: true
+  plus: [python, backend, бэкенд, бекенд, devops, девопс, fastapi, django, docker, kubernetes, k8s,
+         linux, "интеграц", integrat, интегратор, keitaro, кейтаро, binom, postback, постбек, постбэк,
+         "s2s", capi, "conversion api", "api", webhook, вебхук, "telegram bot", "тг бот", "телеграм бот",
+         "бот", aiogram, telethon, разработчик, developer, программист, "tech", техспец, "тех спец",
+         техн, sre, n8n, automation, автоматиз, postgres, sql, clickhouse, "full stack", fullstack,
+         "фулстек", node, javascript, typescript, react, php, golang, "парсинг", парсер,
+         cto, "team lead", тимлид, "tech lead", техлид, "тех лид", "head of tech", "head of engineering",
+         "head of development", "руководитель разработки", "технический директор", "lead developer",
+         "lead engineer", аналитик, "data engineer", "power bi", трекер, tracker]
+  minus: ["media buyer", медиабайер, "медиа баер", баер, байер, buyer, sales, продаж, "аккаунт менеджер",
+          "account manager", "affiliate manager", "аффилейт менеджер", bizdev, "biz dev", креатив,
+          дизайнер, designer, копирайтер, smm, рекрутер, recruiter, hr-менеджер, оператор, модератор,
+          "чат-менеджер", "чаттер", саппорт, support, retention, ретеншн, closer, клоузер]
+  # Чаты: сообщение берём, только если есть запрос И техническое слово из plus
+  chat_request_markers: [ищу, ищем, нужен, нужна, нужно, требуется, "кто может", "кто сделает", "кто настроит",
+                         "кто умеет", посоветуйте, порекомендуйте, "в поиске", "есть кто", "кто возьм",
+                         hiring, "looking for", "need a", "в команду", вакансия, "на проект", "пишите в лс"]
+  # …и это не человек, который сам ищет работу / предлагает услуги
+  chat_offer_markers: ["ищу работу", "ищу проект", "ищу заказ", "возьму проект", "возьму заказ", "предлагаю услуги",
+                       "мои услуги", "сделаю под ключ", "#резюме", "#ищуработу", "портфолио в лс", "открыт к предложениям",
+                       "открыта к предложениям", "рассмотрю предложения", "шукаю роботу", "шукаю команду",
+                       "шукаю проект", "про себе", "о себе:", "готов к тестовому", "готова к тестовому", "відкритий до тестового"]
+  # Резюме соискателей (для каналов и чатов): любой тег = резюме; фраз нужно 2+, т.к. по одной встречаются и в вакансиях
+  resume_tags: ["#резюме", "#ищуработу", "#ищу_работу", "#resume", "#lookingforjob", "#opentowork", "#ищупроект"]
+  resume_phrases: ["обо мне", "о себе:", "ожидания по зарплате", "ожидаемая зарплата", "ищу работу", "в поиске работы",
+                   "рассмотрю предложения", "открыт к предложениям", "открыта к предложениям", "готов к собеседованиям",
+                   "готов к техническим собеседованиям", "готова к техническим собеседованиям", "готов к быстрому выходу",
+                   "готова к быстрому выходу", "публикатор:", "мой стек", "ключевые результаты", "шукаю роботу",
+                   "open to work", "looking for a job", "about me"]
+  # Подтверждение технической роли в самом тексте: без хотя бы одного такого слова категория
+  # Разработка/DevOps/Интеграции/Техспец от модели не принимается (модель может «додумать» роль)
+  tech_evidence: [
+    # языки
+    python, "питон", "пайтон", golang, "java", kotlin, scala, "c#", "c++", ".net", dotnet, "php", laravel,
+    symfony, yii, ruby, rails, "rust", elixir, erlang, "swift ios", "swiftui", "objective-c", dart, flutter, "lua", perl, "bash", shell,
+    powershell, "sql", plsql, "t-sql", "1с", "1c", javascript, "js ", "js,", "js/", typescript, "ts ", "html", "css", sass,
+    # бэкенд и фреймворки
+    backend, бэкенд, бекенд, "бэк ", "бек ", django, flask, fastapi, aiohttp, asyncio, celery, sqlalchemy, pydantic,
+    "spring boot", "node", nestjs, "express.js", "next.js", nextjs, "nuxt", "gin ", grpc, graphql, "rest ", "restful",
+    microservice, микросервис, websocket,
+    # фронтенд и мобильная разработка
+    frontend, фронтенд, фронт-, react, "vue", angular, svelte, redux, tailwind, webpack, vite, "ios ", android, "mobile dev",
+    "мобильн разработ", "react native", верст, "webview", "pwa", "telegram mini app", "mini app",
+    # инфраструктура и devops
+    devops, девопс, devsecops, "sre", docker, kubernetes, "k8s", helm, terraform, ansible, "ci/cd", "ci ", jenkins,
+    "gitlab", "github", "git ", nginx, apache, traefik, linux, ubuntu, debian, centos, "unix", "*nix", сервер, server,
+    vps, хостинг, hosting, "aws", azure, "gcp", "google cloud", cloudflare, "dns", "ssl", "tls", "cdn", домен, prometheus,
+    grafana, zabbix, "elk", kibana, sentry, "мониторинг сервер", деплой, deploy, "devops-инфраструктур", "infrastructure as code",
+    # базы и очереди
+    postgres, mysql, mariadb, mongodb, "mongo", redis, clickhouse, elasticsearch, "kafka", rabbitmq, "nosql", "oracle",
+    greenplum, hadoop, spark, airflow, "etl", "dwh", "бд ", "базы данных", "база данных", database,
+    # трекинг, арбитраж-тех, интеграции
+    postback, постбек, постбэк, "s2s", "facebook pixel", "настройка пиксел", "capi ", "conversion api", keitaro, кейтаро, binom, бином,
+    voluum, zeustrack, redtrack, трекер, tracker, трекинг, tracking, клоак, cloak, "sub_id", "subid", "click_id",
+    интеграц, integrat, интегратор, integrator, "api", webhook, вебхук, "crm-систем", "интеграция crm", "cms-", "cms ", wordpress, tilda, bitrix, битрикс,
+    modx, "amocrm", "hubspot", salesforce, "sap ", chatterfy, cellxpert, "affise", "everflow", hasoffers, 
+    # боты, автоматизация, парсинг
+    "бот", "bot ", "bots", "chatbot", aiogram, telethon, "telegram api", n8n, zapier, "make.com", "test automation",
+    "python-скрипт", "скрипты на python", парс, scraping, scraper, selenium, playwright, puppeteer,
+    # данные, ИИ
+    "ml ", "ml-", "machine learning", "машинн обучен", "llm", "gpt api", openai, "ai engineer", "ai-разработ", "ai developer", "data engineer",
+    "data scientist", "аналитик данных", "bi-", "power bi", tableau, "looker", pandas, numpy, pytorch, tensorflow,
+    # роли и общие технические слова
+    разработ, developer, development, программист, programmer, engineer, инженер, архитект, architect,
+    "tech lead", техлид, "тех лид", "team lead разработ", "cto", "head of engineering", "head of development",
+    "head of tech", "chief technical officer", "chief technology officer", "технический директор", техспец, "тех спец", "технический специалист", "tech specialist",
+    "технический директор", "техническое сопровождение", "qa", тестировщ, автотест, "autotest", "test automation", "release", релиз,
+    "it-специалист", "it специалист", "it-отдел", "it отдел", "сисадмин", "системный администратор", "системного администратора", "системний адміністратор", "сетевой администратор", "сетевого администратора", "network engineer", "network administrator", sysadmin,
+    "техподдерж", "технической поддержк", "техническая поддержк", "техническую поддержк", "tech support", "technical support", "support engineer", "l2", "l3", "fullstack", "full stack",
+    "full-stack", фулстек, "фуллстек", "code review", "код-ревью", "ревью кода", coding, "github.com", "open source"]
+  # Признаки, что это вообще вакансия
+  vacancy_markers: [ваканс, вакансі, ищем, шукаємо, требуется, hiring, "we are looking", "зп", "з/п",
+                    зарплат, salary, оклад, "опыт от", "досвід", "условия", "обязанности", "requirements",
+                    "откликнуться", "резюме", "cv", "пишите", "писать"]
+
+# ---------- LLM ----------
+# Цепочка: первая модель, если ошибка/лимит — следующая
+llm:
+  chain:
+    - name: gemini
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai
+      model: gemini-3.5-flash-lite
+      api_key_env: GEMINI_API_KEY
+      min_interval_sec: 4.5      # ~13 запросов/мин — под минутный лимит бесплатной квоты
+      daily_limit: 430           # квота ~450/сутки; дальше — следующие в цепочке
+    - name: groq
+      base_url: https://api.groq.com/openai/v1
+      model: llama-3.3-70b-versatile
+      api_key_env: GROQ_API_KEY
+      proxy_env: GROQ_PROXY
+      min_interval_sec: 2.5      # бережём бесплатные лимиты
+    - name: ollama
+      base_url_env: OLLAMA_BASE_URL
+      model: qwen3-vl:8b-instruct
+      min_interval_sec: 0
+  max_input_chars: 4000
+  timeout_sec: 120
+
+# ---------- Запасной трек: быстрый выход ----------
+# Техспец / интегратор / техподдержка, удалёнка, вилка от min_salary в месяц (или не указана).
+# После правки — перезапуск: флаги пересчитаются по всем вакансиям без LLM.
+backup_track:
+  enabled: true
+  min_salary: 2500
+  allow_unknown_salary: true
+  remote_only: true
+  notify: true                # присылать сразу с пометкой «🛟 Запасной трек»
+  categories: ["Техспец", "Интеграции"]
+  title_keywords: ["техспец", "тех спец", "технический специалист", "интегратор", "integrator", "integration",
+                   "technical specialist", "tech specialist", "tech support", "technical support", "техподдерж",
+                   "support engineer", "трекер", "tracker", "keitaro"]
+
+# ---------- Уведомления ----------
+notify:
+  min_relevance: 80
+
+# ---------- Статусы (порядок = воронка в дашборде) ----------
+statuses: ["Новая", "Интересно", "Откликнулась", "Интервью", "Оффер", "Отказ", "Скрыта"]
+
+# ---------- Автопилот ----------
+autopilot:
+  discover: true              # раз в сутки искать новые публичные каналы/чаты с вакансиями
+  auto_enable: true           # найденные сразу читать (без вступления); пустые потом отключатся сами
+  max_new_per_day: 10
+  prune_after_days: 4         # найденный источник без единой вакансии за N дней — отключить
+  search_queries: ["вакансии python", "python вакансии удаленно", "devops вакансии", "tech lead вакансии",
+                   "тимлид вакансии", "backend вакансии", "вакансии арбитраж", "арбитраж трафика работа",
+                   "igaming jobs", "igaming вакансии", "crypto jobs", "web3 jobs", "remote it jobs",
+                   "affiliate jobs", "cpa вакансии", "it вакансии удаленка", "работа программист удаленно",
+                   "техспец арбитраж", "telegram боты вакансии", "fintech вакансии"]
+  digest_time: "10:00"        # ежедневный дайджест (по local_tz)
+  local_tz: Asia/Almaty
+  digest_min_relevance: 60
+  alert_no_posts_hours: 6     # нет новых постов столько часов — сигнал (VPN/сессия)
+
+# ---------- Питание (Windows) ----------
+power:
+  keep_awake: true      # пока радар работает — не давать системе уснуть (экран гаснет как обычно)
+  only_on_ac: true      # …только на зарядке; на батарее сон разрешён
+  wake_gap_min: 3       # «пропал» дольше — значит спал: догнать пропущенные посты
+
+# ---------- Рынок ----------
+# Примерные курсы для пересчёта ожиданий из резюме в USD. Поправь под текущий курс.
+market:
+  rub_per_usd: 82
+  kzt_per_usd: 500
+  uah_per_usd: 41
+  usd_per_eur: 1.08
+  resume_llm: true           # true = локальная модель в фоне уточняет резюме (грузит ЦП и видеокарту)

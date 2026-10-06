@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% set active = 'jobs' %}
+{% block main %}
+<div class="stats">
+  <div class="stat"><b>{{ stats.new_day }}</b><span>новых за сутки</span></div>
+  <div class="stat"><b>{{ stats.relevant }}</b><span>релевантных (≥70)</span></div>
+  <div class="stat"><b>{{ stats['Откликнулась'] }}</b><span>откликов</span></div>
+  <div class="stat"><b>{{ stats['Интервью'] }}</b><span>интервью</span></div>
+  <div class="stat"><b>{{ stats['Оффер'] }}</b><span>офферов</span></div>
+</div>
+
+<form class="filters" method="get" action="/">
+  <input name="q" value="{{ p.q or '' }}" placeholder="Поиск: python, keitaro…" size="18">
+  <select name="category"><option value="">Все категории</option>
+    {% for c in CATEGORIES %}<option {{ 'selected' if p.category == c }}>{{ c }}</option>{% endfor %}</select>
+  <select name="format"><option value="">Любой формат</option>
+    {% for c in FORMATS %}<option {{ 'selected' if p.format == c }}>{{ c }}</option>{% endfor %}</select>
+  <select name="job_type"><option value="">Работа и проекты</option>
+    {% for c in JOB_TYPES %}<option {{ 'selected' if p.job_type == c }}>{{ c }}</option>{% endfor %}</select>
+  <select name="vertical"><option value="">Все вертикали</option>
+    {% for c in VERTICALS %}<option {{ 'selected' if p.vertical == c }}>{{ c }}</option>{% endfor %}</select>
+  <select name="status"><option value="">Все статусы (кроме скрытых)</option>
+    {% for s in STATUSES %}<option {{ 'selected' if p.status == s }}>{{ s }}</option>{% endfor %}</select>
+  <select name="emp">
+    <option value="">Любое оформление</option>
+    <option value="fit" {{ 'selected' if p.emp == 'fit' }}>✅ без привязки к РФ и ЕС</option>
+    <option value="rf" {{ 'selected' if p.emp == 'rf' }}>📍 только РФ</option>
+    <option value="eu" {{ 'selected' if p.emp == 'eu' }}>📍 только ЕС</option>
+    {% for e in ('ТК / штат', 'ГПХ', 'ИП / самозанятый', 'Контракт / B2B') %}<option {{ 'selected' if p.emp == e }}>{{ e }}</option>{% endfor %}
+    <option value="none" {{ 'selected' if p.emp == 'none' }}>не указано</option>
+  </select>
+  <label>Релев. от <input name="min_rel" type="number" min="0" max="100" value="{{ p.min_rel or '' }}" style="width:64px"></label>
+  <label>ЗП от <input name="salary" type="number" min="0" value="{{ p.salary or '' }}" style="width:84px"></label>
+  <select name="period">{% for k, v in PERIODS.items() %}<option value="{{ k }}" {{ 'selected' if p.period == k }}>{{ v }}</option>{% endfor %}</select>
+  <select name="sort">
+    <option value="rel" {{ 'selected' if p.sort == 'rel' }}>по релевантности</option>
+    <option value="date" {{ 'selected' if p.sort == 'date' }}>по дате</option>
+    <option value="salary" {{ 'selected' if p.sort == 'salary' }}>по зарплате</option>
+  </select>
+  <select name="track">
+    <option value="">Все треки</option>
+    <option value="main" {{ 'selected' if p.track == 'main' }}>🎯 основной (≥70)</option>
+    <option value="backup" {{ 'selected' if p.track == 'backup' }}>🛟 запасной (техспец от $2500)</option>
+  </select>
+  <input type="hidden" name="hide_nontech" value="0">
+  <label><input type="checkbox" name="hide_nontech" value="1" {{ 'checked' if p.hide_nontech == '1' }}> скрыть медиабаинг и продажи</label>
+  <button class="primary">Показать</button>
+  <a href="/">сбросить</a>
+  <a href="/export.csv?{{ request.url.query }}" style="margin-left:auto">⬇ CSV</a>
+</form>
+
+{% if rows %}
+<table>
+  <thead><tr>
+    <th>%</th><th>Должность</th><th class="hide-sm">Компания</th><th>Зарплата</th><th class="hide-sm">Формат</th><th class="hide-sm">Оформление</th>
+    <th class="hide-sm">Вертикаль</th><th>Контакты</th><th class="hide-sm">Источник</th><th class="hide-sm">Дата</th><th>Статус</th>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="row" hx-get="/v/{{ r.id }}" hx-target="#panel" hx-on::after-request="document.getElementById('panel').classList.add('open')">
+      <td class="rel {{ 'hi' if r.relevance >= 70 else ('mid' if r.relevance >= 40 else 'lo') }}">{{ r.relevance }}</td>
+      <td><b>{{ r.title }}</b>{% if r.job_type == 'Проект / фриланс' %} <span class="chip">проект</span>{% endif %}{% if r.backup %} <span class="chip">🛟 запасной</span>{% endif %}{% if r.flags %} <span class="chip" title="{{ flags_of(r) | join('; ') }}">⚠️ подозрительно</span>{% endif %}<div class="muted">{{ r.category }}{% if r.stack %} · {{ r.stack[:4] | join(', ') }}{% endif %}</div></td>
+      <td class="hide-sm">{{ r.company or '—' }}</td>
+      <td>{{ salary(r) }}</td>
+      <td class="hide-sm">{{ r.format }}</td>
+      <td class="hide-sm">{% if r.rf_only %}<span class="chip" title="Нужно быть в РФ / резидентом РФ">📍 только РФ</span> {% endif %}{% if r.eu_only %}<span class="chip" title="Нужно жить в ЕС / право на работу в ЕС">📍 только ЕС</span> {% endif %}{{ r.employment or ('' if r.rf_only or r.eu_only else '—') }}</td>
+      <td class="hide-sm">{{ r.vertical }}</td>
+      <td class="contacts" onclick="event.stopPropagation()">
+        {% for c in r.contacts[:3] %}<a href="{{ contact_href(c) }}" target="_blank">{{ c.value }}</a>{% set rl = rmap.get(norm_contact(c.value)) %}{% if rl %} <span class="chip" title="{{ rl }}">{{ rl.split(' ')[0] }}</span>{% endif %}{% else %}<span class="muted">—</span>{% endfor %}
+      </td>
+      <td class="hide-sm" onclick="event.stopPropagation()">
+        <a href="{{ r.source_url }}" target="_blank">{{ r.source_title }}</a>{% if r.n_sources > 1 %} <span class="chip">+{{ r.n_sources - 1 }}</span>{% endif %}
+      </td>
+      <td class="hide-sm muted">{{ (r.last_seen or '')[:10] }}</td>
+      <td>{% with v = r %}{% include "_status.html" %}{% endwith %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">Под фильтр ничего нет. Попробуй период «всё время» или сними галочку «скрыть медиабаинг».</div>
+{% endif %}
+
+<aside id="panel"></aside>
+<script>
+  // открыть карточку из уведомления: /?open=123
+  const openId = new URLSearchParams(location.search).get('open');
+  if (openId) htmx.ajax('GET', '/v/' + openId, '#panel').then(() => document.getElementById('panel').classList.add('open'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('panel').classList.remove('open'); });
+</script>
+{% endblock %}

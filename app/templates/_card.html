@@ -1,0 +1,67 @@
+<button class="close" onclick="document.getElementById('panel').classList.remove('open')">✕</button>
+<h2>{{ v.title }}</h2>
+<div class="muted">{{ v.job_type or '' }}{{ ' · ' if v.job_type }}{{ v.company or 'компания не указана' }} · {{ v.category }} · {{ v.vertical }} · {{ v.format }}{% if v.location %} · {{ v.location }}{% endif %}</div>
+
+{% if flags %}<section class="warn" style="border-left:4px solid #eb6834;padding:6px 10px;background:rgba(235,104,52,.08)">
+  <b>⚠️ Подозрительно:</b> {{ flags | join('; ') }}
+  <div class="muted" style="font-size:12px">Не запускай их код, не ставь программы, не подключай кошелёк и не плати. Сначала проверь компанию и рекрутера.</div>
+</section>{% endif %}
+
+{% if history %}<section style="border-left:4px solid #2a78d6;padding:6px 10px">
+  <b>👤 Уже общалась с этим контактом</b>
+  {% for h in history %}<div>{{ h.contact }}: {% if h.vid %}<a href="/?open={{ h.vid }}">{{ h.what }}</a>{% else %}{{ h.what }}{% endif %}
+    <span class="muted">({{ h.status }}{{ ', ' ~ h.date if h.date }})</span></div>{% endfor %}
+</section>{% endif %}
+
+<section>
+  <span class="rel {{ 'hi' if v.relevance >= 70 else ('mid' if v.relevance >= 40 else 'lo') }}">{{ v.relevance }}%</span>
+  <span class="muted">— {{ v.relevance_reason or 'без пояснения' }}</span>
+</section>
+
+<section>
+  <b>Зарплата:</b> {{ salary(v) }}{% if v.salary_raw and (v.salary_from or v.salary_to) %} <span class="muted">({{ v.salary_raw }})</span>{% endif %}<br>
+  <b>Оформление:</b> {{ v.employment or 'не указано' }}{% if v.rf_only %} · <b>📍 только РФ</b> <span class="muted">(нужно быть в России или резидентом РФ)</span>{% endif %}{% if v.eu_only %} · <b>📍 только ЕС</b> <span class="muted">(нужно жить в ЕС или иметь право на работу в ЕС)</span>{% endif %}<br>
+  {% if v.experience %}<b>Опыт:</b> {{ v.experience }}<br>{% endif %}
+  {% if v.stack %}<b>Стек:</b> {% for s in v.stack %}<span class="chip">{{ s }}</span>{% endfor %}{% endif %}
+</section>
+
+<section><b>Суть</b><div>{{ v.summary or '—' }}</div></section>
+
+<section><b>Контакты</b>
+  {% for c in v.contacts %}<div><a href="{{ contact_href(c) }}" target="_blank">{{ c.value }}</a> <span class="muted">{{ c.type }}</span>
+    {% set rt = rtags.get(c.value) %}{% if rt %} <b>{{ rt.text }}</b>{% if rt.note %} <span class="muted">({{ rt.note }})</span>{% endif %}{% endif %}
+    <form style="display:inline" hx-post="/recruiter" hx-target="next .rsaved" hx-trigger="change">
+      <input type="hidden" name="contact" value="{{ c.value }}">
+      <select name="label" onclick="event.stopPropagation()"><option value="">поведение…</option>
+        {% for k, lbl in RECRUITER_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if rt and rt.label == k }}>{{ lbl }}</option>{% endfor %}
+      </select></form><span class="rsaved"></span></div>
+  {% else %}<div class="muted">контактов в посте нет — смотри исходный пост</div>{% endfor %}
+</section>
+
+<section><b>Отклик</b>
+  <div id="draft-{{ v.id }}">
+    {% if v.draft %}{% with vid=v.id, text=v.draft, contacts=v.contacts %}{% include "_draft.html" %}{% endwith %}
+    {% else %}<button class="primary" hx-post="/v/{{ v.id }}/draft" hx-target="#draft-{{ v.id }}"
+       hx-indicator="#draft-wait-{{ v.id }}">✍️ Черновик отклика</button>
+    <span id="draft-wait-{{ v.id }}" class="htmx-indicator muted">пишу…</span>{% endif %}
+  </div>
+</section>
+
+<section><b>Статус</b><br>{% include "_status.html" %}</section>
+
+<section><b>CV, которое отправила</b>{% include "_cv.html" %}</section>
+
+<section><b>Подготовка к собесу</b>{% include "_prep.html" %}</section>
+
+<section><b>Заметки</b>
+  <form hx-post="/v/{{ v.id }}/notes" hx-target="next .note-result" hx-trigger="submit, keyup changed delay:800ms from:find textarea">
+    <textarea name="notes" placeholder="написала 25.09, созвон в пт 15:00…">{{ v.notes or '' }}</textarea>
+  </form>
+  <span class="note-result"></span>
+</section>
+
+<section><b>Где встречалась ({{ sources | length }})</b>
+  {% for s in sources %}<div><a href="{{ s.url }}" target="_blank">{{ s.title }}</a> <span class="muted">{{ (s.date or '')[:16] | replace('T', ' ') }}</span></div>{% endfor %}
+</section>
+
+{% if sources %}<section><b>Исходный текст</b><pre>{{ sources[0].text }}</pre></section>{% endif %}

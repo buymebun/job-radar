@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set active = 'sources' %}
+{% block main %}
+<p class="muted">Все каналы и чаты аккаунта-парсера. Включённые читаются; при включении подтягивается история. «Авто» — совпало с <code>sources.auto_match</code> в config.yaml.</p>
+<table>
+  <thead><tr><th>Читать</th><th>Канал / чат</th><th>Тип</th><th>Постов</th><th>Вакансий</th><th>Релевантных (≥70)</th><th class="hide-sm">Авто</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><button class="toggle {{ 'вкл' if r.enabled else 'выкл' }}" hx-post="/sources/{{ r.id }}/toggle" hx-swap="outerHTML">{{ 'вкл' if r.enabled else 'выкл' }}</button></td>
+      <td>{% if r.username %}<a href="https://t.me/{{ r.username }}" target="_blank">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</td>
+      <td>{{ '💬 чат' if r.is_chat else '📢 канал' }}</td>
+      <td>{{ r.posts }}</td>
+      <td>{{ r.n_vac }}</td>
+      <td>{{ r.n_rel }}</td>
+      <td class="hide-sm">{{ '✓' if r.auto_found }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="empty">Источников пока нет — запусти run.py, он прочитает диалоги аккаунта.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

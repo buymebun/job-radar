@@ -1,0 +1,15 @@
+<div id="cv-{{ v.id }}">
+  <form hx-post="/v/{{ v.id }}/cv" hx-target="#cv-{{ v.id }}" hx-swap="outerHTML" hx-trigger="change">
+    <select name="cv_path" style="max-width:100%">
+      <option value="">— не указано —</option>
+      {% for p in cvs %}<option value="{{ p }}" {{ 'selected' if p == v.cv_path }}>{{ p.split('\\')[-2] }} / {{ p.split('\\')[-1] }}</option>{% endfor %}
+      {% if v.cv_path and v.cv_path not in cvs %}<option value="{{ v.cv_path }}" selected>{{ v.cv_path }}</option>{% endif %}
+    </select>
+  </form>
+  <form hx-post="/v/{{ v.id }}/cv/upload" hx-target="#cv-{{ v.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+        hx-trigger="change">
+    <label class="muted">или загрузить PDF: <input type="file" name="file" accept="application/pdf"></label>
+  </form>
+  {% if v.cv_path %}<div><a href="/v/{{ v.id }}/cv" target="_blank">📄 открыть отправленное CV</a>
+    <div class="muted" style="font-size:12px;user-select:all">{{ v.cv_path }}</div></div>{% endif %}
+</div>

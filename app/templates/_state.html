@@ -1,0 +1,2 @@
+постов: {{ raw }} · вакансий: {{ vac }} · в очереди: {{ s.queue }} · разобрано: {{ s.processed }}{% if s.errors %} · ошибок LLM: {{ s.errors }}{% endif %}<br>
+выгрузка истории: {{ s.backfill }} · LLM: {{ llms | join(' → ') if llms else 'не настроены!' }} · запросов сегодня: {{ usage }}

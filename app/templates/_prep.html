@@ -1,0 +1,7 @@
+<div id="prep-{{ v.id }}">
+  {% if v.prep %}<div class="prep" style="white-space:pre-wrap">{{ v.prep }}</div>{% endif %}
+  <button hx-post="/v/{{ v.id }}/prep" hx-target="#prep-{{ v.id }}" hx-swap="outerHTML"
+          hx-indicator="#prep-wait-{{ v.id }}">🎤 {{ 'Обновить подготовку' if v.prep else 'Подготовка к собесу' }}</button>
+  <span id="prep-wait-{{ v.id }}" class="htmx-indicator muted">готовлю…</span>
+  <div class="muted" style="font-size:12px">Учитывает выбранное CV и заметки. При статусе «Интервью» готовится сама.</div>
+</div>
