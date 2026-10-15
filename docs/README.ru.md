@@ -68,7 +68,7 @@ copy .env.example .env      # и заполнить (раздел 4)
 | `PROXY_URL` | отдельный VPN для радара, `http://login:pass@host:port` или `socks5://…` | панель прокси-провайдера |
 | `GEMINI_API_KEY` | разбор вакансий, ~450 запросов в сутки бесплатно | Google AI Studio |
 | `GROQ_API_KEY` | запасной LLM (необязательно) | console.groq.com |
-| `OLLAMA_BASE_URL` | локальная модель, последний запасной вариант | уже настроено |
+| `OLLAMA_BASE_URL` | локальная модель, последний запасной вариант | `http://localhost:11434/v1`, установка в README → LLM setup |
 | `NOTIFY_BOT_TOKEN` | бот, который пишет тебе | @BotFather |
 | `NOTIFY_CHAT_ID` | твой Telegram id (кому писать) | @userinfobot |
 | `WEB_HOST`, `WEB_PORT` | адрес дашборда (`127.0.0.1:8765`) | — |
@@ -276,11 +276,11 @@ data/                    база, сессия, логи (не в git)
 Подключение через `.mcp.json` в рабочей папке:
 
 ```json
-{"mcpServers": {"job-radar": {"command": "D:\Projects\job-radar\.venv\Scripts\python.exe",
+{"mcpServers": {"job-radar": {"command": ".venv\Scripts\python.exe",
                               "args": ["D:\Projects\job-radar\mcp_server.py"]}}}
 ```
 
-Папка с CV и трекером задаётся `CV_ROOT` (по умолчанию `D:\Projects\Hueta`).
+Папка с CV и трекером задаётся `CV_ROOT` в `.env` (по умолчанию папка `cv` рядом с проектом).
 
 ## Подсказки в карточке вакансии
 

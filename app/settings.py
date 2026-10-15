@@ -33,11 +33,11 @@ WEB_PORT = int(env("WEB_PORT", "8765"))
 NOTIFY_BOT_TOKEN = env("NOTIFY_BOT_TOKEN")
 NOTIFY_CHAT_ID = env("NOTIFY_CHAT_ID")
 # Доступ из домашней сети: логин/пароль для всех, кроме самого ноута; адрес для ссылок в уведомлениях
-DASH_USER = env("DASH_USER", "vlada")
+DASH_USER = env("DASH_USER", "admin")
 DASH_PASSWORD = env("DASH_PASSWORD")
 PUBLIC_URL = (env("PUBLIC_URL") or f"http://{'127.0.0.1' if WEB_HOST in ('0.0.0.0', '') else WEB_HOST}:{WEB_PORT}").rstrip("/")
 STATUSES = CONFIG["statuses"]
-CV_ROOT = Path(env("CV_ROOT") or r"D:\Projects\Hueta")   # папка с CV и трекером откликов
+CV_ROOT = Path(env("CV_ROOT") or ROOT / "cv")   # папка с CV и трекером откликов
 
 APP_NAME = "HRmagistr"
 APP_VERSION = "1.1"

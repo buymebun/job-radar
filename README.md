@@ -58,6 +58,22 @@ Dashboard: http://127.0.0.1:8765
 
 Run in the background with the watchdog: `.venv\Scripts\pythonw run_forever.py`, or install autostart with `tools\install_autostart.ps1`. Status and stop: `tools\status.ps1`, `tools\stop.ps1`.
 
+## LLM setup
+
+The app works with any OpenAI-compatible endpoint. The default chain in `config.yaml` is Gemini, then Groq, then a local model; you need at least one of them.
+
+1. **Gemini (recommended, free tier).** Get a key at [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY` in `.env`. The free tier gives roughly 450 requests a day; the app stops at `daily_limit` (430 by default) and falls back to the next provider.
+2. **Groq (optional fallback).** Key from [console.groq.com](https://console.groq.com/keys) into `GROQ_API_KEY`. If Groq is blocked in your region, set `GROQ_PROXY`.
+3. **Local model through Ollama (optional, private, no quotas).**
+   - Install Ollama from [ollama.com](https://ollama.com/download) and make sure it runs (`ollama list`).
+   - Pull a model. The default is `qwen3-vl:8b-instruct`; any instruction-tuned model with JSON output works:
+     ```powershell
+     ollama pull qwen3-vl:8b-instruct
+     ```
+   - Keep `OLLAMA_BASE_URL=http://localhost:11434/v1` in `.env`. To use another model, change `model:` of the `ollama` entry in `config.yaml`.
+   - Rough sizing: an 8B model at Q4 needs about 6 GB of VRAM to run fully on the GPU; 14B about 10 GB; 32B about 20 GB. With less VRAM Ollama offloads to CPU and gets slower, but still works.
+   - Background resume enrichment uses only the local model and only when the vacancy queue is empty; turn it off with `market.resume_llm: false`.
+
 MCP server for an AI assistant (any MCP client):
 
 ```json

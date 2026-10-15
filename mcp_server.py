@@ -14,7 +14,7 @@ from mcp.server.mcpserver import MCPServer
 from app import db, insights
 from app.settings import STATUSES
 
-CV_ROOT = Path(os.getenv("CV_ROOT", r"D:\Projects\Hueta"))
+from app.settings import CV_ROOT  # noqa: E402
 TRACKER = CV_ROOT / "Рассылка" / "трекер.csv"
 TRACKER_COLS = ["Компания", "Роль", "Ссылка", "Вилка", "Канал", "Дата отклика", "Статус", "Следующий шаг", "Заметки"]
 
